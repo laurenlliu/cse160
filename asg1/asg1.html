@@ -1,0 +1,177 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8" />
+    <title>Assignment 1: Points, Triangles & Circles</title>
+    <style>
+        body {
+            margin: 0;
+            text-align: center;
+            font-family: Arial, sans-serif;
+            padding: 20px;
+        }
+        canvas {
+            border: 1px solid black;
+            display: block;
+            margin: 0 auto 20px auto;
+        }
+        .controls {
+            margin: 20px auto;
+            width: 400px;
+            text-align: left;
+        }
+        .shape-buttons {
+            margin-bottom: 20px;
+        }
+        .shape-buttons button {
+            margin: 5px;
+            padding: 10px 15px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        .shape-buttons button.active {
+            background-color: #4CAF50;
+            color: white;
+            border: 2px solid #45a049;
+        }
+        .color-display {
+            width: 50px;
+            height: 50px;
+            border: 1px solid black;
+            margin: 10px auto;
+            background-color: rgb(255, 0, 0);
+        }
+        .slider-container {
+            margin: 10px 0;
+        }
+        label {
+            display: inline-block;
+            width: 80px;
+        }
+        input[type="range"] {
+            width: 200px;
+        }
+        .slider-value {
+            display: inline-block;
+            width: 40px;
+            text-align: right;
+        }
+        button {
+            margin: 10px 5px;
+            padding: 8px 15px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        .performance {
+            font-size: 12px;
+            color: #666;
+            margin-top: 10px;
+        }
+    </style>
+</head>
+
+<body onload="main()">
+    <h2>Assignment 1: Points, Triangles & Circles</h2>
+    
+    <canvas id="webgl" width="400" height="400">
+        Please use a browser that supports "canvas"
+    </canvas>
+    
+    <div class="controls">
+        <h3>Shape Selection</h3>
+        <div class="shape-buttons">
+            <button id="pointButton" class="active">Point</button>
+            <button id="triangleButton">Triangle</button>
+            <button id="circleButton">Circle</button>
+        </div>
+        
+        <button id="clearButton">Clear Canvas</button>
+
+        <button id="drawPigButton">Draw Pig Picture</button>
+        
+        <h3>Color Controls</h3>
+        
+        <!-- Color Display -->
+        <div class="color-display" id="colorDisplay"></div>
+        
+        <!-- Red Slider -->
+        <div class="slider-container">
+            <label for="redSlider">Red:</label>
+            <input type="range" id="redSlider" min="0" max="100" value="100">
+            <span class="slider-value" id="redValue">1.00</span>
+        </div>
+        
+        <!-- Green Slider -->
+        <div class="slider-container">
+            <label for="greenSlider">Green:</label>
+            <input type="range" id="greenSlider" min="0" max="100" value="0">
+            <span class="slider-value" id="greenValue">0.00</span>
+        </div>
+        
+        <!-- Blue Slider -->
+        <div class="slider-container">
+            <label for="blueSlider">Blue:</label>
+            <input type="range" id="blueSlider" min="0" max="100" value="0">
+            <span class="slider-value" id="blueValue">0.00</span>
+        </div>
+        
+        <!-- Size Slider (for points and circles) -->
+        <div class="slider-container">
+            <label for="sizeSlider">Size/Radius:</label>
+            <input type="range" id="sizeSlider" min="1" max="50" value="10">
+            <span class="slider-value" id="sizeValue">10</span>
+        </div>
+        
+        <!-- NEW: Circle Segments Slider -->
+        <div class="slider-container" id="segmentsContainer" style="display: none;">
+            <label for="segmentsSlider">Circle Segments:</label>
+            <input type="range" id="segmentsSlider" min="3" max="50" value="20">
+            <span class="slider-value" id="segmentsValue">20</span>
+        </div>
+        
+        <p id="numPoints">Number of shapes: 0</p>
+        <p class="performance" id="performance">Performance: Ready</p>
+
+        <div id="pig-game-section" style="margin: 20px 0; padding: 10px; border: 1px solid #ccc; border-radius: 5px;">
+            <h3>🐷 Pig Clicker Game 🐷</h3>
+            <p>Click on the pig to make it happy! Its ears wiggle and cheeks blush when clicked. (His name is Pickle btw) </p>
+            
+            <p><strong>Happiness:</strong> <span id="pigHappiness">0</span></p>
+            <p><strong>Clicks:</strong> <span id="pigClicks">0</span></p>
+            
+            <button onclick="resetPigGame()" style="padding: 5px 10px; margin-top: 5px;">
+                Reset Game
+            </button>
+        </div>
+
+    </div>
+
+    <div style="margin: 20px auto; width: 400px; text-align: left;">
+        <h3>Hand Drawing Reference</h3>
+        <p>This is my hand drawn pig design:</p>
+        <img src="pig_drawing.jpeg" alt="Hand drawn pig reference" 
+             style="width: 100%; border: 1px solid #ccc; border-radius: 5px;">
+    </div>
+
+    <div style="background-color: #f0f8ff; padding: 15px; margin: 20px auto; width: 400px; border-radius: 5px; text-align: left;">
+        <h3>Pig Clicker Game</h3>
+        <p>I implemented an interactive pig clicker game! Here's what it does:</p>
+        <ul>
+            <li><strong>Click the pig</strong> to make it happy</li>
+            <li>Each click adds to the happiness score</li>
+            <li>The pig's ears wiggle and its cheeks blush when it's happy!</li>
+            <li>Track your clicks and happiness level</li>
+            <li>Reset button to start over</li>
+        </ul>
+        <p><em>To play: Click "Draw Pig Picture" first, then click on the pig!</em></p>
+    </div>
+
+
+    
+    <!-- Load all our JavaScript files -->
+    <script src="Triangle.js"></script>
+    <script src="Circle.js"></script>
+    <script src="PigPicture.js"></script>
+    <script src="asg1.js"></script>
+</body>
+</html>
