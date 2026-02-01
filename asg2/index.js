@@ -65,10 +65,10 @@ let gAnimalGlobalRotation = 0; // Y
 let gMouseRotX = 0;
 let gMouseRotY = 0;
 
-// Joint sliders (front-left leg chain)
-let gFrontLeftThigh = 15;
-let gFrontLeftCalf = -25;
-let gFrontLeftFoot = 10;
+// Joint sliders (leg chain)
+let gAllThigh = 15;
+let gAllCalf = -25;
+let gAllFoot = 10;
 
 // Extra controls
 let gHeadYaw = 0;
@@ -180,9 +180,9 @@ function setupUI() {
   };
 
   addSlider("Global rotate (Y)", -180, 180, gAnimalGlobalRotation, (v) => (gAnimalGlobalRotation = v));
-  addSlider("Front-left thigh", -90, 90, gFrontLeftThigh, (v) => (gFrontLeftThigh = v));
-  addSlider("Front-left calf", -120, 30, gFrontLeftCalf, (v) => (gFrontLeftCalf = v));
-  addSlider("Front-left foot (3rd joint)", -60, 60, gFrontLeftFoot, (v) => (gFrontLeftFoot = v));
+  addSlider("Thighs (1st joint)", -90, 90, gAllThigh, (v) => (gAllThigh = v));
+  addSlider("Calves (2nd joint)", -120, 30, gAllCalf, (v) => (gAllCalf = v));
+  addSlider("Feet (3rd joint)", -60, 60, gAllFoot, (v) => (gAllFoot = v));
   addSlider("Head yaw", -45, 45, gHeadYaw, (v) => (gHeadYaw = v));
   addSlider("Tail swing", -80, 80, gTailSwing, (v) => (gTailSwing = v));
 
@@ -253,7 +253,7 @@ function setupMouse() {
 }
 
 // ===================== ANIMATION =====================
-function tick() {
+/*function tick() {
   const now = performance.now() / 1000;
   g_seconds = now - g_startTime;
 
@@ -274,15 +274,39 @@ function tick() {
     `fps=${g_fps.toFixed(1)} | anim=${gAnimationOn ? "on" : "off"} | t=${g_seconds.toFixed(2)}s`;
 
   requestAnimationFrame(tick);
+}*/
+
+function tick() {
+  const now = performance.now() / 1000;
+  g_seconds = now - g_startTime;
+
+  // Always allow poke to animate, even if normal animation is off
+  if (gAnimationOn || gPokeActive) updateAnimationAngles();
+
+  renderScene();
+
+  // FPS calc
+  g_frameCount++;
+  const nowMs = performance.now();
+  if (nowMs - g_lastFpsTime >= 500) { // update twice per second
+    g_fps = (g_frameCount * 1000) / (nowMs - g_lastFpsTime);
+    g_frameCount = 0;
+    g_lastFpsTime = nowMs;
+  }
+
+  perfDiv.textContent =
+    `fps=${g_fps.toFixed(1)} | anim=${gAnimationOn ? "on" : "off"} | t=${g_seconds.toFixed(2)}s`;
+
+  requestAnimationFrame(tick);
 }
 
 function updateAnimationAngles() {
   const s = Math.sin(g_seconds * 5.5);
 
-  // front-left leg
-  gFrontLeftThigh = 8 + 22 * s;
-  gFrontLeftCalf = -18 + 40 * Math.max(0, -s);
-  gFrontLeftFoot = 6 + 14 * Math.sin(g_seconds * 5.5 + Math.PI / 4);
+  // leg
+  gAllThigh = 8 + 22 * s;
+  gAllCalf = -18 + 40 * Math.max(0, -s);
+  gAllFoot = 6 + 14 * Math.sin(g_seconds * 5.5 + Math.PI / 4);
 
   // head + tail
   gHeadYaw = 10 * Math.sin(g_seconds * 2.2);
@@ -296,9 +320,9 @@ function updateAnimationAngles() {
     if (t < 1.0) {
       // --- tail / pose ---
       gTailSwing = 85 * Math.sin(g_seconds * 22.0);
-      gFrontLeftThigh = 55;
-      gFrontLeftCalf = -95;
-      gFrontLeftFoot = 25;
+      gAllThigh = 55;
+      gAllCalf = -95;
+      gAllFoot = 25;
       gHeadYaw = -25;
 
       // --- JUMP (quick up, then down) ---
@@ -313,239 +337,11 @@ function updateAnimationAngles() {
   }
 }
 
-// ===================== RENDER =====================
-/*function renderScene() {
-  gl.clearColor(0.85, 0.92, 1.0, 1.0);
-  gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
-
-  // Global rotation
-const globalRot = new Matrix4();
-globalRot.setIdentity();
-
-// scale rat here
-globalRot.scale(0.25, 0.25, 0.25); 
-
-// rotations still work normally
-globalRot.rotate(gMouseRotX, 1, 0, 0);
-globalRot.rotate(gAnimalGlobalRotation + gMouseRotY, 0, 1, 0);
-
-gl.uniformMatrix4fv(u_GlobalRotateMatrix, false, globalRot.elements);
-
-  // Rat palette
-  //const FUR      = [0.40, 0.40, 0.43, 1.0];
-  const FUR_DARK = [0.26, 0.26, 0.29, 1.0];
-  const FUR_LIGHT= [0.55, 0.55, 0.58, 1.0];
-  const PINK     = [0.92, 0.62, 0.70, 1.0];
-  const BLACK    = [0.08, 0.08, 0.10, 1.0];
-  const WHITE    = [0.92, 0.92, 0.95, 1.0];
-  const FUR = [0.75, 0.75, 0.75, 1.0];
-
-  // --- Rat-like proportions ---
-  const bodyY = 0.05;
-
-  // torso + rump makes it feel like a rat (big butt, narrower chest)
-  const torsoLen = 0.95, torsoH = 0.42, torsoW = 0.42;
-  const rumpLen  = 0.75, rumpH  = 0.50, rumpW  = 0.50;
-
-  // positions
-  const torsoX = 0.10;
-  const rumpX  = torsoX - 0.65;
-
-  // leg attach heights
-  const torsoLegY = bodyY - torsoH * 0.55;
-  const rumpLegY  = bodyY - rumpH  * 0.55;
-
-  // z offsets for legs
-  const torsoLegZ = torsoW * 0.35;
-  const rumpLegZ  = rumpW  * 0.35;
-
-  // ================= BODY (2 blocks) =================
-  const torso = new Matrix4();
-  torso.setIdentity();
-  torso.translate(torsoX, bodyY, 0);
-  torso.scale(torsoLen, torsoH, torsoW);
-  drawCube(gl, u_ModelMatrix, u_FragColor, torso, FUR);
-
-  const rump = new Matrix4();
-  rump.setIdentity();
-  rump.translate(rumpX, bodyY - 0.01, 0);
-  rump.scale(rumpLen, rumpH, rumpW);
-  drawCube(gl, u_ModelMatrix, u_FragColor, rump, FUR);
-
-  // little haunch “slope” (helps the silhouette)
-  const haunch = new Matrix4();
-  haunch.setIdentity();
-  haunch.translate(rumpX - 0.10, bodyY - 0.08, 0);
-  haunch.rotate(-12, 0, 0, 1);
-  haunch.scale(0.50, 0.28, 0.46);
-  drawCube(gl, u_ModelMatrix, u_FragColor, haunch, FUR);
-
-  // ================= NECK =================
-  const neck = new Matrix4();
-  neck.setIdentity();
-  neck.translate(torsoX + torsoLen * 0.48, bodyY + 0.02, 0);
-  neck.scale(0.18, 0.22, 0.28);
-  drawCube(gl, u_ModelMatrix, u_FragColor, neck, FUR);
-
-  // ================= HEAD (smaller than pig, slightly lower) =================
-  const headLen = 0.38, headH = 0.30, headW = 0.30;
-  const headCenterX = torsoX + torsoLen * 0.55 + headLen * 0.45;
-
-  const head = new Matrix4();
-  head.setIdentity();
-  head.translate(headCenterX, bodyY + 0.03, 0);
-  head.rotate(gHeadYaw, 0, 1, 0);
-  head.scale(headLen, headH, headW);
-  drawCube(gl, u_ModelMatrix, u_FragColor, head, FUR);
-
-  // ================= SNOUT (longer, tapered feel using cylinder) =================
-  const snoutFrame = new Matrix4();
-  snoutFrame.setIdentity();
-  snoutFrame.translate(headCenterX + headLen * 0.55, bodyY + 0.02, 0);
-  snoutFrame.rotate(gHeadYaw, 0, 1, 0);
-
-  const snout = new Matrix4(snoutFrame);
-  snout.rotate(90, 0, 1, 0);
-  snout.scale(0.06, 0.06, 0.25); // long thin
-  drawCylinder(gl, u_ModelMatrix, u_FragColor, snout, FUR);
-
-  const nose = new Matrix4(snoutFrame);
-  nose.translate(0.16, -0.02, 0);
-  nose.scale(0.07, 0.06, 0.07);
-  drawCube(gl, u_ModelMatrix, u_FragColor, nose, PINK);
-
-  // nostrils
-  for (let side of [1, -1]) {
-    const n = new Matrix4(snoutFrame);
-    n.translate(0.18, -0.02, side * 0.03);
-    n.scale(0.02, 0.02, 0.02);
-    drawCube(gl, u_ModelMatrix, u_FragColor, n, BLACK);
-  }
-
-  // eyes (bigger/whiter like your example rat sprite)
-  for (let side of [1, -1]) {
-    const eyeWhite = new Matrix4();
-    eyeWhite.setIdentity();
-    eyeWhite.translate(headCenterX - 0.05, bodyY + 0.08, side * 0.11);
-    eyeWhite.scale(0.06, 0.05, 0.06);
-    drawCube(gl, u_ModelMatrix, u_FragColor, eyeWhite, WHITE);
-
-    const eyePupil = new Matrix4();
-    eyePupil.setIdentity();
-    eyePupil.translate(headCenterX - 0.03, bodyY + 0.08, side * 0.11);
-    eyePupil.scale(0.025, 0.025, 0.025);
-    drawCube(gl, u_ModelMatrix, u_FragColor, eyePupil, BLACK);
-  }
-
-  // ears (bigger than pig ears)
-  for (let side of [1, -1]) {
-    const ear = new Matrix4();
-    ear.setIdentity();
-    ear.translate(headCenterX - 0.14, bodyY + 0.17, side * 0.16);
-    ear.rotate(side * 15, 0, 0, 1);
-    ear.scale(0.10, 0.16, 0.08);
-    drawCube(gl, u_ModelMatrix, u_FragColor, ear, PINK);
-  }
-
-  // ================= LEGS =================
-  // Front legs (smaller)
-  const frontX = torsoX + 0.30;
-  drawLegChain({
-    baseX: frontX,
-    baseY: torsoLegY,
-    baseZ: torsoLegZ,
-    thighAngle: gFrontLeftThigh,
-    calfAngle: gFrontLeftCalf,
-    footAngle: gFrontLeftFoot,
-    color: FUR_LIGHT,
-    thighLen: 0.18,
-    calfLen: 0.16,
-    footScale: [0.16, 0.05, 0.18],
-  });
-  drawLegChain({
-    baseX: frontX,
-    baseY: torsoLegY,
-    baseZ: -torsoLegZ,
-    thighAngle: -gFrontLeftThigh * 0.85,
-    calfAngle: gFrontLeftCalf * 0.7,
-    footAngle: -gFrontLeftFoot * 0.6,
-    color: FUR_LIGHT,
-    thighLen: 0.18,
-    calfLen: 0.16,
-    footScale: [0.16, 0.05, 0.18],
-  });
-
-  // Back legs (bigger, more “haunchy”)
-  const backX = rumpX - 0.10;
-  drawLegChain({
-    baseX: backX,
-    baseY: rumpLegY,
-    baseZ: rumpLegZ,
-    thighAngle: -gFrontLeftThigh * 0.65,
-    calfAngle: gFrontLeftCalf * 0.75,
-    footAngle: gFrontLeftFoot * 0.5,
-    color: FUR_LIGHT,
-    thighLen: 0.24,
-    calfLen: 0.22,
-    footScale: [0.18, 0.06, 0.22],
-  });
-  drawLegChain({
-    baseX: backX,
-    baseY: rumpLegY,
-    baseZ: -rumpLegZ,
-    thighAngle: gFrontLeftThigh * 0.65,
-    calfAngle: gFrontLeftCalf * 0.75,
-    footAngle: -gFrontLeftFoot * 0.5,
-    color: FUR_LIGHT,
-    thighLen: 0.24,
-    calfLen: 0.22,
-    footScale: [0.18, 0.06, 0.22],
-  });
-
-  // ================= TAIL (long + thin, 5 segments) =================
-  const tailRootX = rumpX - rumpLen * 0.55 - 0.05;
-
-  const tailBase = new Matrix4();
-  tailBase.setIdentity();
-  tailBase.translate(tailRootX, bodyY + 0.02, 0);
-  tailBase.rotate(gTailSwing, 0, 1, 0);
-  tailBase.rotate(-10, 0, 0, 1);
-
-  let frame = new Matrix4(tailBase);
-  const segs = [
-    { dx: -0.12, dy: 0.00, len: 0.22, rot: 10 },
-    { dx: -0.20, dy: 0.02, len: 0.22, rot: 14 },
-    { dx: -0.22, dy: 0.02, len: 0.20, rot: 16 },
-    { dx: -0.20, dy: 0.01, len: 0.18, rot: 18 },
-    { dx: -0.16, dy: 0.00, len: 0.16, rot: 20 },
-  ];
-
-  for (let i = 0; i < segs.length; i++) {
-    const s = segs[i];
-
-    const segFrame = new Matrix4(frame);
-    segFrame.translate(s.dx, s.dy, 0);
-    segFrame.rotate(s.rot, 0, 0, 1);
-
-    const seg = new Matrix4(segFrame);
-    seg.translate(-s.len * 0.5, 0, 0);
-    seg.scale(s.len, 0.035, 0.035);
-    drawCube(gl, u_ModelMatrix, u_FragColor, seg, PINK);
-
-    frame = segFrame;
-  }
-
-  // tail tip (tiny cylinder)
-  const tip = new Matrix4(frame);
-  tip.translate(-0.10, 0, 0);
-  tip.rotate(90, 0, 1, 0);
-  tip.scale(0.02, 0.02, 0.06);
-  drawCylinder(gl, u_ModelMatrix, u_FragColor, tip, PINK);
-}
-*/
+// Render
 
 function renderScene() {
-  gl.clearColor(0.85, 0.92, 1.0, 1.0);
+  //gl.clearColor(0.85, 0.92, 1.0, 1.0);
+  gl.clearColor(0.98, 0.9, 0.92, 1.0);
   gl.clear(gl.COLOR_BUFFER_BIT | gl.DEPTH_BUFFER_BIT);
 
   // Global transform
@@ -598,11 +394,30 @@ function renderScene() {
   drawCube(gl, u_ModelMatrix, u_FragColor, head, RAT);
 
   // snout
-  const snout = new Matrix4();
+  /*const snout = new Matrix4();
   snout.setIdentity();
+
   snout.translate(headX + headLen * 0.55 + 0.07, bodyY + 0.01, 0);
+
   snout.scale(0.10, 0.07, 0.10);
-  drawCube(gl, u_ModelMatrix, u_FragColor, snout, PINK);
+  drawCube(gl, u_ModelMatrix, u_FragColor, snout, PINK);*/
+
+  // snout (non-cube primitive: cylinder)
+const snout = new Matrix4();
+snout.setIdentity();
+
+// same position as before
+snout.translate(headX + headLen * 0.55 + 0.07, bodyY + 0.01, 0);
+
+// rotate so cylinder points forward (along X in your scene)
+snout.rotate(90, 0, 0, 1);
+
+// scale: radius, length, radius
+snout.scale(0.05, 0.14, 0.05);
+
+// draw cylinder instead of cube
+drawCylinder(gl, u_ModelMatrix, u_FragColor, snout, PINK);
+
 
   // whiskers
 const whiskerLen = 0.14;
@@ -666,16 +481,16 @@ for (let side of [1, -1]) {
   const legZ      = bodyW * 0.40;
 
   drawLegChain({ baseX: shoulderX, baseY: legAttachY, baseZ:  legZ,
-    thighAngle: gFrontLeftThigh, calfAngle: gFrontLeftCalf, footAngle: gFrontLeftFoot, color: DARK });
+    thighAngle: gAllThigh, calfAngle: gAllCalf, footAngle: gAllFoot, color: DARK });
 
   drawLegChain({ baseX: shoulderX, baseY: legAttachY, baseZ: -legZ,
-    thighAngle: -gFrontLeftThigh * 0.9, calfAngle: gFrontLeftCalf * 0.7, footAngle: -gFrontLeftFoot * 0.6, color: DARK });
+    thighAngle: -gAllThigh * 0.9, calfAngle: gAllCalf * 0.7, footAngle: -gAllFoot * 0.6, color: DARK });
 
   drawLegChain({ baseX: hipX, baseY: legAttachY, baseZ:  legZ,
-    thighAngle: -gFrontLeftThigh * 0.8, calfAngle: gFrontLeftCalf * 0.65, footAngle: gFrontLeftFoot * 0.5, color: DARK });
+    thighAngle: -gAllThigh * 0.8, calfAngle: gAllCalf * 0.65, footAngle: gAllFoot * 0.5, color: DARK });
 
   drawLegChain({ baseX: hipX, baseY: legAttachY, baseZ: -legZ,
-    thighAngle:  gFrontLeftThigh * 0.8, calfAngle: gFrontLeftCalf * 0.65, footAngle: -gFrontLeftFoot * 0.5, color: DARK });
+    thighAngle:  gAllThigh * 0.8, calfAngle: gAllCalf * 0.65, footAngle: -gAllFoot * 0.5, color: DARK });
 
   // ================= TAIL =================
   /*const tailRootX = bodyX - bodyLen * 0.5 - 0.06;
